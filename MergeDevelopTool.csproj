@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -7,8 +7,12 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>mdev</ToolCommandName>
     <Nullable>enable</Nullable>
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
     <PackageOutputPath>./dist</PackageOutputPath>
   </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="completion.zsh" />
+  </ItemGroup>
 
 </Project>

@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
+using System.Reflection;
 /*
  * Cheat sheet
  * dotnet pack
@@ -14,6 +15,7 @@ class MergeDevelop
         {
             // Check for flags
             bool refresh = false;
+            bool installCompletions = false;
             string targetBranch = "develop";
 
             foreach (var arg in args)
@@ -24,7 +26,11 @@ class MergeDevelop
                     return;
                 }
                 
-                if (arg == "--refresh" || arg == "-r")
+                if (arg == "--install-completions")
+                {
+                    installCompletions = true;
+                }
+                else if (arg == "--refresh" || arg == "-r")
                 {
                     refresh = true;
                 }
@@ -32,6 +38,12 @@ class MergeDevelop
                 {
                     targetBranch = arg;
                 }
+            }
+
+            if (installCompletions)
+            {
+                InstallZshCompletions();
+                return;
             }
 
             if (refresh)
@@ -112,6 +124,60 @@ class MergeDevelop
         Console.WriteLine("Options:");
         Console.WriteLine("  --help, -h       Show this help message");
         Console.WriteLine("  --refresh, -r    Stash changes, pull latest and pop stash");
+        Console.WriteLine("  --install-completions  Install zsh autocomplete script");
+    }
+
+    static void InstallZshCompletions()
+    {
+        try
+        {
+            Console.WriteLine("Installing zsh completions for mdev...");
+            
+            string homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string completionsDir = Path.Combine(homeDir, ".zsh", "completions");
+            
+            if (!Directory.Exists(completionsDir))
+            {
+                Directory.CreateDirectory(completionsDir);
+            }
+            
+            string scriptPath = Path.Combine(completionsDir, "_mdev");
+            
+            string scriptContent;
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceName = "MergeDevelopTool.completion.zsh";
+            using (Stream? stream = assembly.GetManifestResourceStream(resourceName))
+            {
+                if (stream == null) throw new Exception("Completion script resource not found.");
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    scriptContent = reader.ReadToEnd();
+                }
+            }
+
+            File.WriteAllText(scriptPath, scriptContent);
+            Console.WriteLine($"✅ Completion script written to {scriptPath}");
+            
+            string zshrcPath = Path.Combine(homeDir, ".zshrc");
+            if (File.Exists(zshrcPath))
+            {
+                string zshrc = File.ReadAllText(zshrcPath);
+                string fpathConfig = "fpath=(~/.zsh/completions $fpath)";
+                
+                bool needsUpdate = !zshrc.Contains("~/.zsh/completions");
+                if (needsUpdate)
+                {
+                    Console.WriteLine("Adding ~/.zsh/completions to fpath in ~/.zshrc...");
+                    File.AppendAllText(zshrcPath, $"\n# Added by mdev\n{fpathConfig}\nautoload -Uz compinit\ncompinit\n");
+                }
+            }
+            
+            Console.WriteLine("🎉 Installation complete! Please restart your terminal or run: source ~/.zshrc");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Failed to install completions: {ex.Message}");
+        }
     }
 
     static string RunGitCommand(string arguments)
